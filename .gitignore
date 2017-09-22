@@ -1,0 +1,6 @@
+#ignore the directory
+/node_modules/
+#ignore json files
+*.json
+#with Only one Exception for package.json
+!package.json
