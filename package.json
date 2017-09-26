@@ -1,0 +1,17 @@
+{
+  "name": "node_apps",
+  "version": "1.0.0",
+  "description": "",
+  "main": "cluster-app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+	"start":"node cluster-app.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.118.0",
+    "lawgs": "^1.0.4",
+    "sqs-consumer": "^3.7.0"
+  }
+}
