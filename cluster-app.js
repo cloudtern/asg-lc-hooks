@@ -3,11 +3,12 @@ const http = require('http');
 const numCPUs = require('os').cpus().length;
 const AWS = require('aws-sdk');
 const lawgs = require('lawgs');
-const config = require('./config.json');
-const autoscaling = new AWS.AutoScaling(config);
+const awsconfig = require('./config.json');
+const autoscaling = new AWS.AutoScaling(awsconfig);
 lawgs.config({
-	aws:config
+	aws:awsconfig
 });
+//AWS.config.loadFromPath('./config.json');
 const logger = lawgs.getOrCreate('ASG');
 var lifeCycleParams = {};
 const sqs = new AWS.SQS({region:'us-east-1'}); 
@@ -26,13 +27,18 @@ var messageHandler = function(message,done){
 			console.log("Got a test message from SQS. Ignore!!!");
 			return done();
 		}else{
-			if(true){
+			if(json.hasOwnProperty('LifecycleTransition')&&json['LifecycleTransition']==="autoscaling:EC2_INSTANCE_TERMINATING"){
 			// Check wheather the instance-id matches with the current instance
-				
-			}
-			console.log("Got termination event");
-			process.send({cmd:"Terminate",message:json});
-			return done();		
+				console.log("Got termination event from Auto scaling group(ASG)");
+				console.log("Checking whether the termination has come for me or not");
+				if(json['EC2InstanceId']==process.env.EC2_INSTANCE_ID){
+					console.log("I got the termination. Sending the message to Master Process to finish the jobs");
+					process.send({cmd:"Terminate",message:json});
+					return done();
+				}else{
+					console.log("got termination event for other instance. Not Me!!!");
+				}
+			}		
 		}		
 	}
 	return done("Not processing");
@@ -65,16 +71,15 @@ if (cluster.isMaster) {
 	console.log(`Master process id ${process.pid}:`);
 	const worker = cluster.fork();
 	worker.on('message',function(msg){
-		console.log("Got a message from Worker");
 		var parsedMsg = (typeof msg === "object")? msg: JSON.parse(msg);
 		console.log(typeof parsedMsg)
 		console.log(parsedMsg);
 		if(parsedMsg.hasOwnProperty('cmd') && parsedMsg['cmd']==="Terminate"){
+			console.log("Got a message from Worker to self terminate");
 			logger.log('sample',parsedMsg.message);
 			_termiationHandler(parsedMsg.message);
 			worker.disconnect();
 		}
-		//logger.log('sample',parsedMsg);
 	});
 	worker.on('disconnect',function(){
 		console.log("Got disconnect event from Master");
